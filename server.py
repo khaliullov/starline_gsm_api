@@ -47,7 +47,12 @@ def lambda_handler(event, context):
     if result['state'] != 1:
         response['codestring'] = 'Invalid state while getting token'
         response['code'] = 403
-    response['token'] = str(result['desc']['user_token'])
+    if 'user_token' in result['desc']:
+        response['token'] = str(result['desc']['user_token'])
+    else:
+        response['codestring'] = str(result['desc']['message'])
+        response['code'] = 403
+
 
     dev = httplib.HTTPSConnection("dev.starline.ru")
 
