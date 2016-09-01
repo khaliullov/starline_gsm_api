@@ -52,7 +52,7 @@ def lambda_handler(event, context):
     else:
         response['codestring'] = str(result['desc']['message'])
         response['code'] = 403
-
+        return response
 
     dev = httplib.HTTPSConnection("dev.starline.ru")
 
