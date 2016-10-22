@@ -1,5 +1,7 @@
 #!/usr/bin/python3
+# coding=utf8
 
+import argparse
 import http.client
 import json
 import pprint
@@ -19,10 +21,14 @@ request = {
         "locale": "USSR"
     }
 }
+DEFAULT_ENDPOINT = 'xu3g4ixx6c.execute-api.eu-central-1.amazonaws.com'
 
 
-def _ajax_request(host, method, path, params=None, _headers={}):
-    handle = http.client.HTTPSConnection(host)
+def _ajax_request(host, http_scheme, method, path, params=None, _headers={}):
+    if http_scheme:
+        handle = http.client.HTTPConnection(host)
+    else:
+        handle = http.client.HTTPSConnection(host)
     headers = {"Content-type": "application/json; charset=utf-8",
                "User-Agent": "Mozilla/5.0",
                "Accept": "application/json"}
@@ -31,6 +37,7 @@ def _ajax_request(host, method, path, params=None, _headers={}):
     handle.request(method, path, params, headers)
     res = handle.getresponse()
     if res.status != 200:
+        response = {}
         response['codestring'] = 'Failed to auth'
         response['code'] = res.status
         return response
@@ -38,34 +45,34 @@ def _ajax_request(host, method, path, params=None, _headers={}):
 
 
 def get_credentials(req):
-    credentials = _ajax_request('xu3g4ixx6c.execute-api.eu-central-1.amazonaws.com',
+    credentials = _ajax_request(req['endpoint'], req['http'],
                                 'POST', '/starline/get_token', json.dumps(req))
 
     return credentials
 
 
 def get_devices(credentials):
-    devices = _ajax_request('dev.starline.ru', 'GET', '/json/user/' +
+    devices = _ajax_request('dev.starline.ru', False, 'GET', '/json/user/' +
                             credentials['user_id'] + '/devices', None,
                             {"Cookie": credentials['cookie']})
     return devices
 
 
 def get_state(credentials, device_id):
-    state = _ajax_request('dev.starline.ru', 'GET', '/json/device/' +
+    state = _ajax_request('dev.starline.ru', False, 'GET', '/json/device/' +
                           device_id, None,
                           {"Cookie": credentials['cookie']})
     return state
 
 def set_state(credentials, device_id, state={}):
-    new_state = _ajax_request('dev.starline.ru', 'POST', '/json/device/' +
+    new_state = _ajax_request('dev.starline.ru', False, 'POST', '/json/device/' +
                               device_id + '/set_param', json.dumps(state),
                              {"Cookie": credentials['cookie']})
     return new_state
 
 
-def main():
-    result = get_credentials(request)
+def main(_request = request):
+    result = get_credentials(_request)
     pprint.pprint(result)
     if 'code' not in result or int(result['code']) != 200:
         pprint.pprint(result)
@@ -82,7 +89,7 @@ def main():
 
     result = get_state(credentials, devices[0]['device_id'])
 
-    if int(result['code']) != 200:
+    if 'code' in result and int(result['code']) != 200:
         pprint.pprint(result)
         return 3
 
@@ -105,4 +112,21 @@ def main():
 
 
 if __name__== '__main__':
-    main()
+    parser = argparse.ArgumentParser(description='Starline GSM client')
+    parser.add_argument('-u', '--user', help='user name')
+    parser.add_argument('-p', '--password', help='password')
+    parser.add_argument('-http', '--http', help='force http scheme', action='store_true')
+    parser.add_argument('-ep', '--endpoint', help='endpoint', default=DEFAULT_ENDPOINT)
+    parser.add_argument('-cs', '--captchasid', help='captcha SID')
+    parser.add_argument('-cc', '--captchacode', help='captcha code')
+    args = parser.parse_args()
+    _request = request
+    _request['login'] = args.user
+    _request['pass'] = args.password
+    _request['endpoint'] = args.endpoint
+    _request['http'] = args.http
+    if args.captchasid:
+        _request['captchaSid'] = args.captchasid
+    if args.captchacode:
+        _request['captchaCode'] = args.captchacode
+    main(_request)

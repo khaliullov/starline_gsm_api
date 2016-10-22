@@ -13,6 +13,3 @@ server.py is a AWS Lambda function code.
 API described here in Russian: http://blog.leandr.su/2016/08/starline-gsm-api.html
 
 Problem was discussed on Garmin forum: https://forums.garmin.com/showthread.php?359619-makeWebRequest-reponse-headers-or-Set-Cookie-headers
-
-
-

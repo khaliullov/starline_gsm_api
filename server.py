@@ -14,6 +14,10 @@ AUTH_URL = "/json/v2/auth.slid"
 def lambda_handler(event, context):
     response = {}
 
+    if not 'login' in event or not 'pass' in event:
+        response['codestring'] = "'login' and 'pass' are required"
+        response['code'] = 400
+        return response
     h = hashlib.sha1()
     h.update(event['pass'])
     response['pass'] = h.hexdigest()
@@ -34,7 +38,12 @@ def lambda_handler(event, context):
         return response
     token = result['desc']['token']
 
-    params = urllib.urlencode({'login': event['login'], 'pass': response['pass']})
+    params_dict = {'login': event['login'], 'pass': response['pass']}
+    if 'captchaSid' in event:  # capture session ID
+        params_dict['captchaSid'] = event['captchaSid']
+    if 'captchaCode' in event:  # capture picture recognized code
+        params_dict['captchaCode'] = event['captchaCode']
+    params = urllib.urlencode(params_dict)
     headers = {'token': token, "Content-type": "application/x-www-form-urlencoded",
                "User-Agent": "Mozilla/5.0", "Accept": "application/json"}
     ids.request("POST", LOGIN_URL, params, headers)
@@ -47,6 +56,13 @@ def lambda_handler(event, context):
     if result['state'] != 1:
         response['codestring'] = 'Invalid state while getting token'
         response['code'] = 403
+        if 'desc' in result:
+            if 'message' in result['desc']:
+                response['codestring'] = str(result['desc']['message'])
+            if 'captchaImg' in result['desc']:
+                response['captchaImg'] = str(result['desc']['captchaImg'])
+            if 'captchaSid' in result['desc']:
+                response['captchaSid'] = str(result['desc']['captchaSid'])
     if 'user_token' in result['desc']:
         response['token'] = str(result['desc']['user_token'])
     else:
